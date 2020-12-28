@@ -1,12 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
-import 'package:http/http.dart';
+import 'package:http/http.dart' as http;
 import 'dart:convert';
+import './key.dart' as key;
 
 void main() => runApp(
       MaterialApp(
         title: 'Weather App',
         home: Home(),
+        theme: ThemeData(
+          brightness: Brightness.dark,
+          
+        ),
       ),
     );
 
@@ -16,6 +21,29 @@ class Home extends StatefulWidget {
 }
 
 class _HomeState extends State<Home> {
+  var temp;
+  var description;
+  var precipitaion;
+
+  Future getWeather() async {
+    http.Response response = await http.get(
+        'http://dataservice.accuweather.com/currentconditions/v1/206678?apikey=${key.apiKey}');
+
+    var results = jsonDecode(response.body);
+
+    setState(() {
+      this.temp = results[0]['Temperature']['Metric']['Value'];
+      this.description = results[0]['WeatherText'];
+      this.precipitaion = results[0]['HasPrecipitation'] ? 'Yes' : 'No';
+    });
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    this.getWeather();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -33,16 +61,16 @@ class _HomeState extends State<Home> {
                   Padding(
                     padding: EdgeInsets.only(bottom: 10),
                     child: Text(
-                      'Currently in Moradabad',
+                      'Currently in Lucknow',
                       style: TextStyle(
                         color: Colors.white,
-                        fontSize: 14,
+                        fontSize: 18,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
                   ),
                   Text(
-                    '12\u00B0',
+                    temp != null ? '$temp\u00B0 C' : 'Loading',
                     style: TextStyle(
                       color: Colors.white,
                       fontSize: 40,
@@ -52,7 +80,7 @@ class _HomeState extends State<Home> {
                   Padding(
                     padding: EdgeInsets.only(top: 10),
                     child: Text(
-                      'Fog',
+                      description != null ? '$description' : 'Loading',
                       style: TextStyle(
                         color: Colors.white,
                         fontSize: 14,
@@ -72,22 +100,19 @@ class _HomeState extends State<Home> {
                   ListTile(
                     leading: FaIcon(FontAwesomeIcons.thermometerHalf),
                     title: Text("Temparature"),
-                    trailing: Text('12\u00B0'),
+                    trailing: Text(temp != null ? '$temp\u00B0 C' : 'Loading'),
                   ),
                   ListTile(
-                    leading: FaIcon(FontAwesomeIcons.cloud),
+                    leading: FaIcon(FontAwesomeIcons.sun),
                     title: Text("Weather"),
-                    trailing: Text('Fog'),
+                    trailing:
+                        Text(description != null ? '$description' : 'Loading'),
                   ),
                   ListTile(
-                    leading: FaIcon(FontAwesomeIcons.water),
-                    title: Text("Humidity"),
-                    trailing: Text('44%'),
-                  ),
-                  ListTile(
-                    leading: FaIcon(FontAwesomeIcons.wind),
-                    title: Text("Wind Speed"),
-                    trailing: Text('12 Km/h'),
+                    leading: FaIcon(FontAwesomeIcons.cloudRain),
+                    title: Text("Chance of Rain"),
+                    trailing: Text(
+                        precipitaion != null ? '$precipitaion' : 'Loading'),
                   ),
                 ],
               ),
