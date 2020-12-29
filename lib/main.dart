@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+// import 'package:intl';
+import 'package:geolocator/geolocator.dart';
 import './key.dart' as key;
 
 void main() => runApp(
@@ -10,7 +12,6 @@ void main() => runApp(
         home: Home(),
         theme: ThemeData(
           brightness: Brightness.dark,
-          
         ),
       ),
     );
@@ -23,25 +24,56 @@ class Home extends StatefulWidget {
 class _HomeState extends State<Home> {
   var temp;
   var description;
-  var precipitaion;
+  var humidity;
+  var feeltemp;
+  var name;
+  var visibility;
+  var minTemp;
+  var maxTemp;
+  var sunRise;
+  var sunSet;
+  String latitude = "";
+  String longitude = "";
+  final Geolocator geolocator = Geolocator()..forceAndroidLocationManager;
 
-  Future getWeather() async {
+  Future _getCurrentLocation() async {
+    final geoPosition = await Geolocator()
+        .getCurrentPosition(desiredAccuracy: LocationAccuracy.best);
+    print(geoPosition.latitude);
+    print(geoPosition.longitude);
+    setState(() {
+      latitude = '${geoPosition.latitude}';
+      longitude = '${geoPosition.longitude}';
+    });
+    _getWeather();
+  }
+
+  Future _getWeather() async {
     http.Response response = await http.get(
-        'http://dataservice.accuweather.com/currentconditions/v1/206678?apikey=${key.apiKey}');
+        'http://api.openweathermap.org/data/2.5/weather?lat=$latitude&lon=$longitude&appid=${key.apiKey}');
 
     var results = jsonDecode(response.body);
-
+    print('data $results');
     setState(() {
-      this.temp = results[0]['Temperature']['Metric']['Value'];
-      this.description = results[0]['WeatherText'];
-      this.precipitaion = results[0]['HasPrecipitation'] ? 'Yes' : 'No';
+      name = results['name'];
+      visibility = results['visibility'];
+      temp = (results['main']['temp'] - 273.15).round();
+      feeltemp = (results['main']['feels_like'] - 273.15).round();
+      minTemp = (results['main']['temp_min'] - 273.15).round();
+      maxTemp = (results['main']['temp_max'] - 273.15).round();
+      humidity = results['main']['humidity'];
+      description = results['weather'][0]['description'];
+      sunRise = results['sys']['sunrise'];
+      sunSet = results['sys']['sunset'];
+      // this.temp = results[0]['Temperature']['Metric']['Value'];
+      // this.precipitaion = results[0]['HasPrecipitation'] ? 'Yes' : 'No';
     });
   }
 
   @override
   void initState() {
     super.initState();
-    this.getWeather();
+    _getCurrentLocation();
   }
 
   @override
@@ -50,9 +82,14 @@ class _HomeState extends State<Home> {
       body: Column(
         children: [
           Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [Colors.green, Colors.blue],
+              ),
+            ),
             height: MediaQuery.of(context).size.height / 3,
             width: MediaQuery.of(context).size.width,
-            color: Colors.red,
+            // color: Colors.red,
             child: SafeArea(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -61,7 +98,7 @@ class _HomeState extends State<Home> {
                   Padding(
                     padding: EdgeInsets.only(bottom: 10),
                     child: Text(
-                      'Currently in Lucknow',
+                      name != null ? 'Currently in $name' : 'Loading',
                       style: TextStyle(
                         color: Colors.white,
                         fontSize: 18,
@@ -93,28 +130,48 @@ class _HomeState extends State<Home> {
             ),
           ),
           Expanded(
-            child: Padding(
-              padding: EdgeInsets.all(20),
-              child: ListView(
-                children: [
-                  ListTile(
-                    leading: FaIcon(FontAwesomeIcons.thermometerHalf),
-                    title: Text("Temparature"),
-                    trailing: Text(temp != null ? '$temp\u00B0 C' : 'Loading'),
-                  ),
-                  ListTile(
-                    leading: FaIcon(FontAwesomeIcons.sun),
-                    title: Text("Weather"),
-                    trailing:
-                        Text(description != null ? '$description' : 'Loading'),
-                  ),
-                  ListTile(
-                    leading: FaIcon(FontAwesomeIcons.cloudRain),
-                    title: Text("Chance of Rain"),
-                    trailing: Text(
-                        precipitaion != null ? '$precipitaion' : 'Loading'),
-                  ),
-                ],
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [Colors.green, Colors.blue],
+                ),
+              ),
+              child: Padding(
+                padding: EdgeInsets.all(20),
+                child: ListView(
+                  children: [
+                    ListTile(
+                      leading: FaIcon(FontAwesomeIcons.thermometerHalf),
+                      title: Text("Feels like"),
+                      trailing:
+                          Text(feeltemp != null ? '$temp\u00B0 C' : 'Loading'),
+                    ),
+                    ListTile(
+                      leading: FaIcon(FontAwesomeIcons.arrowAltCircleUp),
+                      title: Text("Min Temp"),
+                      trailing: Text(
+                          minTemp != null ? '$minTemp\u00B0 C' : 'Loading'),
+                    ),
+                    ListTile(
+                      leading: FaIcon(FontAwesomeIcons.arrowAltCircleDown),
+                      title: Text("Max Temp"),
+                      trailing: Text(
+                          maxTemp != null ? '$maxTemp\u00B0 C' : 'Loading'),
+                    ),
+                    ListTile(
+                      leading: FaIcon(FontAwesomeIcons.cloudRain),
+                      title: Text("humidity"),
+                      trailing:
+                          Text(humidity != null ? '$humidity %' : 'Loading'),
+                    ),
+                    ListTile(
+                      leading: FaIcon(FontAwesomeIcons.binoculars),
+                      title: Text("visibility"),
+                      trailing: Text(
+                          visibility != null ? '$visibility m' : 'Loading'),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
