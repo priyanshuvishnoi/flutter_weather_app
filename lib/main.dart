@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-// import 'package:intl';
 import 'package:geolocator/geolocator.dart';
+import 'Widgets/WeatherDataList.dart';
+import 'Widgets/Header.dart';
 import './key.dart' as key;
 
 void main() => runApp(
@@ -12,6 +12,7 @@ void main() => runApp(
         home: Home(),
         theme: ThemeData(
           brightness: Brightness.dark,
+          accentColor: Colors.cyan,
         ),
       ),
     );
@@ -30,8 +31,10 @@ class _HomeState extends State<Home> {
   var visibility;
   var minTemp;
   var maxTemp;
-  var sunRise;
-  var sunSet;
+  var results1;
+  var results2;
+  bool loading = true;
+
   String latitude = "";
   String longitude = "";
   final Geolocator geolocator = Geolocator()..forceAndroidLocationManager;
@@ -39,8 +42,7 @@ class _HomeState extends State<Home> {
   Future _getCurrentLocation() async {
     final geoPosition = await Geolocator()
         .getCurrentPosition(desiredAccuracy: LocationAccuracy.best);
-    print(geoPosition.latitude);
-    print(geoPosition.longitude);
+    
     setState(() {
       latitude = '${geoPosition.latitude}';
       longitude = '${geoPosition.longitude}';
@@ -49,24 +51,23 @@ class _HomeState extends State<Home> {
   }
 
   Future _getWeather() async {
-    http.Response response = await http.get(
-        'http://api.openweathermap.org/data/2.5/weather?lat=$latitude&lon=$longitude&appid=${key.apiKey}');
+    http.Response response1 = await http.get(
+        'https://api.openweathermap.org/data/2.5/onecall?lat=$latitude&lon=$longitude&exclude=minutely,hourly&appid=${key.apiKey}');
 
-    var results = jsonDecode(response.body);
-    print('data $results');
+    http.Response response2 = await http.get(
+        'https://api.openweathermap.org/data/2.5/weather?lat=$latitude&lon=$longitude&appid=${key.apiKey}');
+    results1 = jsonDecode(response1.body);
+    results2 = jsonDecode(response2.body);
     setState(() {
-      name = results['name'];
-      visibility = results['visibility'];
-      temp = (results['main']['temp'] - 273.15).round();
-      feeltemp = (results['main']['feels_like'] - 273.15).round();
-      minTemp = (results['main']['temp_min'] - 273.15).round();
-      maxTemp = (results['main']['temp_max'] - 273.15).round();
-      humidity = results['main']['humidity'];
-      description = results['weather'][0]['description'];
-      sunRise = results['sys']['sunrise'];
-      sunSet = results['sys']['sunset'];
-      // this.temp = results[0]['Temperature']['Metric']['Value'];
-      // this.precipitaion = results[0]['HasPrecipitation'] ? 'Yes' : 'No';
+      loading = false;
+      name = results2['name'];
+      visibility = results1['current']['visibility'];
+      temp = (results1['current']['temp'] - 273.15).round();
+      feeltemp = (results1['current']['feels_like'] - 273.15).round();
+      minTemp = (results1['daily'][0]['temp']['min'] - 273.15).round();
+      maxTemp = (results1['daily'][0]['temp']['max'] - 273.15).round();
+      humidity = results1['current']['humidity'];
+      description = results1['current']['weather'][0]['description'];
     });
   }
 
@@ -79,103 +80,65 @@ class _HomeState extends State<Home> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Column(
-        children: [
-          Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [Colors.green, Colors.blue],
-              ),
-            ),
-            height: MediaQuery.of(context).size.height / 3,
-            width: MediaQuery.of(context).size.width,
-            // color: Colors.red,
-            child: SafeArea(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  Padding(
-                    padding: EdgeInsets.only(bottom: 10),
-                    child: Text(
-                      name != null ? 'Currently in $name' : 'Loading',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 18,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                  Text(
-                    temp != null ? '$temp\u00B0 C' : 'Loading',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 40,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  Padding(
-                    padding: EdgeInsets.only(top: 10),
-                    child: Text(
-                      description != null ? '$description' : 'Loading',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              Colors.black,
+              Colors.blue,
+            ],
           ),
-          Expanded(
-            child: Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [Colors.green, Colors.blue],
-                ),
-              ),
-              child: Padding(
-                padding: EdgeInsets.all(20),
-                child: ListView(
+        ),
+        child: Column(
+          children: [
+            Header(
+              description: description,
+              name: name,
+              temp: temp,
+            ),
+            WeatherDataList(
+              feeltemp: feeltemp,
+              humidity: humidity,
+              maxTemp: maxTemp,
+              minTemp: minTemp,
+              temp: temp,
+              visibility: visibility,
+            ),
+          ],
+        ),
+      ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
+      floatingActionButton: FloatingActionButton.extended(
+        backgroundColor: Color.fromARGB(255, 2, 128, 163),
+        shape: RoundedRectangleBorder(
+          side: BorderSide(
+            color: Colors.black,
+          ),
+          borderRadius: BorderRadius.circular(20),
+        ),
+        onPressed: () {
+          setState(() {
+            loading = true;
+          });
+          _getWeather();
+        },
+        label: loading ? Text('') : Text('Refresh'),
+        icon: loading
+            ? Center(
+                child: Row(
                   children: [
-                    ListTile(
-                      leading: FaIcon(FontAwesomeIcons.thermometerHalf),
-                      title: Text("Feels like"),
-                      trailing:
-                          Text(feeltemp != null ? '$temp\u00B0 C' : 'Loading'),
-                    ),
-                    ListTile(
-                      leading: FaIcon(FontAwesomeIcons.arrowAltCircleUp),
-                      title: Text("Min Temp"),
-                      trailing: Text(
-                          minTemp != null ? '$minTemp\u00B0 C' : 'Loading'),
-                    ),
-                    ListTile(
-                      leading: FaIcon(FontAwesomeIcons.arrowAltCircleDown),
-                      title: Text("Max Temp"),
-                      trailing: Text(
-                          maxTemp != null ? '$maxTemp\u00B0 C' : 'Loading'),
-                    ),
-                    ListTile(
-                      leading: FaIcon(FontAwesomeIcons.cloudRain),
-                      title: Text("humidity"),
-                      trailing:
-                          Text(humidity != null ? '$humidity %' : 'Loading'),
-                    ),
-                    ListTile(
-                      leading: FaIcon(FontAwesomeIcons.binoculars),
-                      title: Text("visibility"),
-                      trailing: Text(
-                          visibility != null ? '$visibility m' : 'Loading'),
-                    ),
+                    Text('   '),
+                    CircularProgressIndicator(
+                        strokeWidth: 4,
+                        valueColor: new AlwaysStoppedAnimation<Color>(
+                          Colors.black,
+                        )),
                   ],
                 ),
-              ),
-            ),
-          ),
-        ],
+              )
+            : Icon(Icons.refresh),
       ),
     );
   }
