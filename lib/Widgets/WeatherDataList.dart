@@ -214,7 +214,11 @@ class WeatherDataList extends StatelessWidget {
                   ),
                 ),
                 trailing: Text(
-                  visibility != null ? '$visibility m' : 'Loading',
+                  visibility == null
+                      ? 'Loading'
+                      : visibility != 10000
+                          ? '$visibility m'
+                          : 'Not Available',
                   style: TextStyle(
                     color: Colors.black,
                     shadows: <Shadow>[
